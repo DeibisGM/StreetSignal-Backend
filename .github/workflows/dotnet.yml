@@ -1,0 +1,49 @@
+name: .NET CI
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  checks: write
+  pull-requests: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore streetsignal-api.slnx
+
+      - name: Verify formatting
+        run: dotnet format streetsignal-api.slnx --verify-no-changes
+
+      - name: Build
+        run: dotnet build streetsignal-api.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test streetsignal-api.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --verbosity normal
+
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: .NET Tests
+          path: '**/TestResults/*.trx'
+          reporter: dotnet-trx

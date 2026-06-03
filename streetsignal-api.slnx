@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/IntegrationTests/">
+    <Project Path="IntegrationTests/streetsignal-api.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/UnitTests/">
+    <Project Path="UnitTests/streetsignal-api.UnitTests.csproj" />
+  </Folder>
+  <Project Path="streetsignal-api.csproj" />
+</Solution>

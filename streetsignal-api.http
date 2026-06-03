@@ -1,6 +1,56 @@
-@streetsignal_api_HostAddress = http://localhost:5160
+@host = http://localhost:5110
+@email = citizen@streetsignal.test
+@password = Password123!
 
-GET {{streetsignal_api_HostAddress}}/weatherforecast/
+### Health
+GET {{host}}/api/health
 Accept: application/json
 
-###
+### Register
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Juan Perez",
+  "email": "new-user@example.com",
+  "phone": "8888-0000",
+  "password": "Password123!"
+}
+
+### Login
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+@token = {{login.response.body.token}}
+
+### Me
+GET {{host}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### Categories
+GET {{host}}/api/categories
+Accept: application/json
+
+### Create report
+POST {{host}}/api/reports
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Pothole on Main Street",
+  "description": "Large pothole, dangerous for vehicles.",
+  "categoryId": "00000000-0000-0000-0000-000000000000",
+  "latitude": 10.3271,
+  "longitude": -84.4305,
+  "address": "Main Street"
+}
+
+### My reports
+GET {{host}}/api/reports/my
+Authorization: Bearer {{token}}

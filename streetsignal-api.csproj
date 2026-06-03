@@ -4,11 +4,33 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>streetsignal_api</RootNamespace>
+    <RootNamespace>StreetSignalApi</RootNamespace>
+    <AssemblyName>streetsignal-api</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 
+  <!-- Keep test projects out of the API build -->
   <ItemGroup>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <Compile Remove="UnitTests/**/*.cs" />
+    <Compile Remove="IntegrationTests/**/*.cs" />
+    <Content Remove="UnitTests/**/*" />
+    <Content Remove="IntegrationTests/**/*" />
+    <None Remove="UnitTests/**/*" />
+    <None Remove="IntegrationTests/**/*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="8.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
   </ItemGroup>
 
 </Project>
