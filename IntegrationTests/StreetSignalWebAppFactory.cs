@@ -19,7 +19,7 @@ public class StreetSignalWebAppFactory : WebApplicationFactory<Program>
 
     public const string Password = "Password123!";
     public const string CitizenEmail = "citizen@test.com";
-    public const string StaffEmail   = "staff@test.com";
+    public const string StaffEmail = "staff@test.com";
 
     private readonly string _dbName = Guid.NewGuid().ToString();
 

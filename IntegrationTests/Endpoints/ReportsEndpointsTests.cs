@@ -17,7 +17,8 @@ public class ReportsEndpointsTests : IClassFixture<StreetSignalWebAppFactory>
         Title = "Pothole in Main Street",
         Description = "Large pothole, dangerous for vehicles.",
         CategoryId = _factory.CategoryId,
-        Latitude = 10.32, Longitude = -84.43,
+        Latitude = 10.32,
+        Longitude = -84.43,
         Address = "Main Street"
     };
 
@@ -81,7 +82,9 @@ public class ReportsEndpointsTests : IClassFixture<StreetSignalWebAppFactory>
         var newEmail = $"another-{Guid.NewGuid():N}@test.com";
         var registerResp = await anonClient.PostAsJsonAsync("/api/auth/register", new RegisterRequest
         {
-            FullName = "Other Citizen", Email = newEmail, Password = "Password123!"
+            FullName = "Other Citizen",
+            Email = newEmail,
+            Password = "Password123!"
         });
         registerResp.EnsureSuccessStatusCode();
         var auth = await registerResp.Content.ReadFromJsonAsync<AuthResponse>();
@@ -97,7 +100,10 @@ public class ReportsEndpointsTests : IClassFixture<StreetSignalWebAppFactory>
         var client = await _factory.AuthedAsync(StreetSignalWebAppFactory.CitizenEmail);
         var resp = await client.PostAsJsonAsync("/api/reports", new CreateReportRequest
         {
-            Title = "x", Description = "short", Latitude = 999, Longitude = 999
+            Title = "x",
+            Description = "short",
+            Latitude = 999,
+            Longitude = 999
         });
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await resp.Content.ReadFromJsonAsync<ValidationErrorResponse>();

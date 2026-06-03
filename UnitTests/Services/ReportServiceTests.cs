@@ -29,7 +29,8 @@ public class ReportServiceTests
         Category = new Category { Name = "Cat", IsActive = true },
         CreatedById = ownerId,
         CreatedBy = new User { Id = ownerId, FullName = "Owner", Role = UserRole.Citizen, Email = "o@x.com" },
-        Latitude = 10, Longitude = -84,
+        Latitude = 10,
+        Longitude = -84,
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow
     };
@@ -80,8 +81,11 @@ public class ReportServiceTests
 
         var act = () => sut.CreateAsync(new CreateReportRequest
         {
-            Title = "Title", Description = "Description longer", CategoryId = catId,
-            Latitude = 10, Longitude = -84
+            Title = "Title",
+            Description = "Description longer",
+            CategoryId = catId,
+            Latitude = 10,
+            Longitude = -84
         }, Guid.NewGuid());
 
         var ex = await act.Should().ThrowAsync<BadRequestException>();

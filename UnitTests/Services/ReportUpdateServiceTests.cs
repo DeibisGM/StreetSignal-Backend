@@ -20,10 +20,12 @@ public class ReportUpdateServiceTests
     private static Report Report(Guid ownerId) => new()
     {
         Id = Guid.NewGuid(),
-        Title = "T", Description = "D",
+        Title = "T",
+        Description = "D",
         CategoryId = Guid.NewGuid(),
         CreatedById = ownerId,
-        Latitude = 1, Longitude = 1
+        Latitude = 1,
+        Longitude = 1
     };
 
     [Fact]
@@ -73,9 +75,12 @@ public class ReportUpdateServiceTests
         _updates.Setup(u => u.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ReportUpdate
                 {
-                    Id = Guid.NewGuid(), ReportId = r.Id, UserId = owner,
+                    Id = Guid.NewGuid(),
+                    ReportId = r.Id,
+                    UserId = owner,
                     User = new User { Id = owner, FullName = "O", Role = UserRole.Citizen, Email = "o@x.com" },
-                    Type = ReportUpdateType.Comment, Message = "self"
+                    Type = ReportUpdateType.Comment,
+                    Message = "self"
                 });
 
         var sut = Build();

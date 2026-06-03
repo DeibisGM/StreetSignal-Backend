@@ -18,7 +18,8 @@ public class ReportUpdatesEndpointsTests : IClassFixture<StreetSignalWebAppFacto
             Title = "Test report for comments",
             Description = "Description long enough.",
             CategoryId = _factory.CategoryId,
-            Latitude = 10.32, Longitude = -84.43
+            Latitude = 10.32,
+            Longitude = -84.43
         });
         resp.EnsureSuccessStatusCode();
         var detail = await resp.Content.ReadFromJsonAsync<ReportDetailResponse>();

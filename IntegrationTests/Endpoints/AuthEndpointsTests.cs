@@ -47,7 +47,9 @@ public class AuthEndpointsTests : IClassFixture<StreetSignalWebAppFactory>
         var client = _factory.CreateClient();
         var resp = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest
         {
-            FullName = "Dup", Email = StreetSignalWebAppFactory.CitizenEmail, Password = "Password123!"
+            FullName = "Dup",
+            Email = StreetSignalWebAppFactory.CitizenEmail,
+            Password = "Password123!"
         });
         resp.StatusCode.Should().Be(HttpStatusCode.Conflict);
         var body = await resp.Content.ReadFromJsonAsync<ErrorResponse>();
@@ -60,7 +62,9 @@ public class AuthEndpointsTests : IClassFixture<StreetSignalWebAppFactory>
         var client = _factory.CreateClient();
         var resp = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest
         {
-            FullName = "x", Email = "not-an-email", Password = "123"
+            FullName = "x",
+            Email = "not-an-email",
+            Password = "123"
         });
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await resp.Content.ReadFromJsonAsync<ValidationErrorResponse>();

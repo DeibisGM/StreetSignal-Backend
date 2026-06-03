@@ -32,7 +32,9 @@ public class AuthServiceTests
 
         var result = await sut.RegisterAsync(new RegisterRequest
         {
-            FullName = "Alice", Email = "New@Example.com", Password = "Password123!"
+            FullName = "Alice",
+            Email = "New@Example.com",
+            Password = "Password123!"
         });
 
         result.Token.Should().Be("test-token");
@@ -50,7 +52,9 @@ public class AuthServiceTests
 
         var act = () => sut.RegisterAsync(new RegisterRequest
         {
-            FullName = "Bob", Email = "taken@example.com", Password = "Password123!"
+            FullName = "Bob",
+            Email = "taken@example.com",
+            Password = "Password123!"
         });
 
         var ex = await act.Should().ThrowAsync<ConflictException>();

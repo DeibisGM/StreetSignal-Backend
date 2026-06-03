@@ -18,11 +18,11 @@ public sealed class ReportRepository : IReportRepository
             .Include(r => r.AssignedTo)
             .AsQueryable();
 
-        if (filter.Status.HasValue)         q = q.Where(r => r.Status == filter.Status.Value);
-        if (filter.CategoryId.HasValue)     q = q.Where(r => r.CategoryId == filter.CategoryId.Value);
-        if (filter.CreatedById.HasValue)    q = q.Where(r => r.CreatedById == filter.CreatedById.Value);
-        if (filter.FromDate.HasValue)       q = q.Where(r => r.CreatedAt >= filter.FromDate.Value);
-        if (filter.ToDate.HasValue)         q = q.Where(r => r.CreatedAt <= filter.ToDate.Value);
+        if (filter.Status.HasValue) q = q.Where(r => r.Status == filter.Status.Value);
+        if (filter.CategoryId.HasValue) q = q.Where(r => r.CategoryId == filter.CategoryId.Value);
+        if (filter.CreatedById.HasValue) q = q.Where(r => r.CreatedById == filter.CreatedById.Value);
+        if (filter.FromDate.HasValue) q = q.Where(r => r.CreatedAt >= filter.FromDate.Value);
+        if (filter.ToDate.HasValue) q = q.Where(r => r.CreatedAt <= filter.ToDate.Value);
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {

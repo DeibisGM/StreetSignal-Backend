@@ -22,7 +22,7 @@ public class CategoryServiceTests
 
         result.Data.Should().HaveCount(1);
         _repo.Verify(r => r.ListAsync(false, It.IsAny<CancellationToken>()), Times.Once);
-        _repo.Verify(r => r.ListAsync(true,  It.IsAny<CancellationToken>()), Times.Never);
+        _repo.Verify(r => r.ListAsync(true, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
