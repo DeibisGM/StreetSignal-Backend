@@ -1,0 +1,37 @@
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.rsuser
+
+# Environment variables and secrets
+appsettings.Development.json
+appsettings.Local.json
+*.env
+.env
+.env.*
+
+# User secrets
+secrets.json
+**/secrets.json
+
+# ASP.NET Core
+launchSettings.json
+
+# NuGet
+*.nupkg
+*.snupkg
+project.lock.json
+packages/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
