@@ -1,7 +1,5 @@
-using Microsoft.AspNetCore.Identity;
 using StreetSignalApi.Configuration;
 using StreetSignalApi.Data;
-using StreetSignalApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,13 +36,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Seed in development only
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>();
-    await DbSeeder.SeedAsync(db, hasher);
+    await db.Database.EnsureCreatedAsync();
 }
 
 app.Run();

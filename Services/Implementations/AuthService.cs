@@ -57,7 +57,17 @@ public sealed class AuthService : IAuthService
             throw new UnauthorizedException(ErrorCodes.InvalidCredentials, "Invalid email or password.");
         }
 
-        var result = _hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+        PasswordVerificationResult result;
+        try
+        {
+            result = _hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+        }
+        catch (FormatException)
+        {
+            // Stored hash is not valid Base-64 (e.g. manually inserted plain-text password).
+            throw new UnauthorizedException(ErrorCodes.InvalidCredentials, "Invalid email or password.");
+        }
+
         if (result == PasswordVerificationResult.Failed)
         {
             throw new UnauthorizedException(ErrorCodes.InvalidCredentials, "Invalid email or password.");
