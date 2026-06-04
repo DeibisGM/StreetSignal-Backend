@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet restore *)",
+      "Bash(dotnet format *)",
+      "Bash(ls *.sln* *.slnx*)",
+      "Bash(find . -maxdepth 2 -name \"*.sln\" -o -name \"*.slnx\")"
+    ]
+  }
+}

@@ -1,0 +1,1341 @@
+openapi: 3.0.3
+info:
+  title: StreetSignal Platform API
+  version: 1.0.0
+  description: >
+    REST API contract for a mobile citizen reports platform. The API supports
+    citizen incident reporting, image evidence, geolocation, report categories,
+    report status tracking, comments, internal municipal updates, notifications,
+    and role-based access for citizens and municipal staff.
+  contact:
+    name: Citizen Reports Development Team
+
+servers:
+  - url: https://api.example.com
+    description: Production server
+  - url: http://localhost:5000
+    description: Local .NET development server
+
+tags:
+  - name: Health
+    description: API availability checks.
+  - name: Auth
+    description: Authentication, registration, and current user session.
+  - name: Categories
+    description: Report categories available to citizens.
+  - name: Reports
+    description: Citizen reports and municipal follow-up.
+  - name: Report Updates
+    description: Comments, status changes, and report history.
+  - name: Files
+    description: Optional API-based image upload support.
+  - name: Notifications
+    description: In-app notifications and device token registration.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/health:
+    get:
+      tags:
+        - Health
+      summary: Check API health
+      description: Returns a simple response to verify that the API is running.
+      operationId: checkHealth
+      security: []
+      responses:
+        "200":
+          description: API is available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "ok"
+                timestamp: "2026-06-02T18:30:00Z"
+
+  /api/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new citizen
+      description: Creates a new citizen account. Staff accounts should be created manually or by an administrator.
+      operationId: registerCitizen
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            example:
+              fullName: "Juan Pérez"
+              email: "juan@example.com"
+              phone: "8888-8888"
+              password: "Password123!"
+      responses:
+        "201":
+          description: Citizen account created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: Email is already registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: "EMAIL_ALREADY_EXISTS"
+                message: "The provided email is already registered."
+
+  /api/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Sign in
+      description: Authenticates a citizen or municipal staff user and returns a JWT access token.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: "ciudadano@test.com"
+              password: "123456"
+      responses:
+        "200":
+          description: User authenticated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: "INVALID_CREDENTIALS"
+                message: "Invalid email or password."
+
+  /api/auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Get current authenticated user
+      description: Returns the profile of the user identified by the JWT token.
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: Current user profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Sign out
+      description: Allows the mobile app to clear the current session. JWT invalidation may be handled client-side for this MVP.
+      operationId: logout
+      responses:
+        "204":
+          description: Session closed successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/categories:
+    get:
+      tags:
+        - Categories
+      summary: List active report categories
+      description: Returns all active categories that citizens can select when creating a report.
+      operationId: listCategories
+      security: []
+      parameters:
+        - name: includeInactive
+          in: query
+          required: false
+          description: Only staff may request inactive categories.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Category list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryListResponse"
+              example:
+                data:
+                  - id: "3f5b0a82-5f3a-4a44-8f29-8d68f6b3a001"
+                    name: "Accumulated garbage"
+                    description: "Garbage accumulation in public spaces."
+                    icon: "trash"
+                    color: "#16A34A"
+                    isActive: true
+                    createdAt: "2026-06-02T18:30:00Z"
+
+  /api/reports:
+    get:
+      tags:
+        - Reports
+      summary: List all reports for municipal staff
+      description: >
+        Returns reports from all citizens. This endpoint is restricted to municipal
+        staff and supports filters for status, category, text search, and date range.
+      operationId: listReportsForStaff
+      parameters:
+        - $ref: "#/components/parameters/StatusQuery"
+        - $ref: "#/components/parameters/CategoryIdQuery"
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/FromDateQuery"
+        - $ref: "#/components/parameters/ToDateQuery"
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/PageSizeQuery"
+      responses:
+        "200":
+          description: Paginated report list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedReportListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      tags:
+        - Reports
+      summary: Create a citizen report
+      description: Creates a new citizen report with category, description, image evidence, and geolocation.
+      operationId: createReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReportRequest"
+            example:
+              title: "Accumulated garbage near the central park"
+              description: "There have been several garbage bags in this area for multiple days."
+              categoryId: "3f5b0a82-5f3a-4a44-8f29-8d68f6b3a001"
+              imageUrl: "https://storage.example.com/reports/report-001.jpg"
+              latitude: 10.3271000
+              longitude: -84.4305000
+              address: "Ciudad Quesada, San Carlos, Alajuela"
+      responses:
+        "201":
+          description: Report created successfully.
+          headers:
+            Location:
+              description: URL of the created report.
+              schema:
+                type: string
+                example: "/api/reports/a6d2fd95-9d71-4b47-9627-fad5d7822001"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportDetailResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/reports/my:
+    get:
+      tags:
+        - Reports
+      summary: List current citizen reports
+      description: Returns only the reports created by the authenticated citizen.
+      operationId: listMyReports
+      parameters:
+        - $ref: "#/components/parameters/StatusQuery"
+        - $ref: "#/components/parameters/CategoryIdQuery"
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/PageSizeQuery"
+      responses:
+        "200":
+          description: Paginated list of reports created by the current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedReportListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/reports/{reportId}:
+    get:
+      tags:
+        - Reports
+      summary: Get report details
+      description: >
+        Returns a report with its category, creator information, geolocation,
+        image evidence, current status, and update history. Citizens may only
+        access their own reports. Staff may access all reports.
+      operationId: getReportById
+      parameters:
+        - $ref: "#/components/parameters/ReportIdPath"
+      responses:
+        "200":
+          description: Report detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      tags:
+        - Reports
+      summary: Update report basic information
+      description: >
+        Allows the citizen who created the report to update basic information
+        while the report is still pending. Staff should use the status endpoint
+        for status changes.
+      operationId: updateReport
+      parameters:
+        - $ref: "#/components/parameters/ReportIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReportRequest"
+            example:
+              title: "Accumulated garbage near the central park entrance"
+              description: "The garbage is near the north entrance of the park."
+              categoryId: "3f5b0a82-5f3a-4a44-8f29-8d68f6b3a001"
+              imageUrl: "https://storage.example.com/reports/report-001-updated.jpg"
+      responses:
+        "200":
+          description: Report updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportDetailResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Report cannot be edited because it is no longer pending.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: "REPORT_NOT_EDITABLE"
+                message: "Only pending reports can be edited by citizens."
+
+  /api/reports/{reportId}/status:
+    patch:
+      tags:
+        - Reports
+      summary: Change report status
+      description: >
+        Allows municipal staff to change the status of a report and optionally
+        add a message explaining the update. A status change creates a history
+        entry and a notification for the citizen.
+      operationId: changeReportStatus
+      parameters:
+        - $ref: "#/components/parameters/ReportIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeReportStatusRequest"
+            example:
+              status: "InProgress"
+              message: "The report was assigned to a municipal field team."
+      responses:
+        "200":
+          description: Report status changed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportDetailResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/reports/{reportId}/updates:
+    get:
+      tags:
+        - Report Updates
+      summary: List report updates
+      description: Returns the timeline of comments, status changes, and system events for one report.
+      operationId: listReportUpdates
+      parameters:
+        - $ref: "#/components/parameters/ReportIdPath"
+      responses:
+        "200":
+          description: Report update timeline.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportUpdateListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags:
+        - Report Updates
+      summary: Add a comment or update to a report
+      description: >
+        Adds a comment to the report timeline. Citizens may comment on their own
+        reports. Staff may comment on any report. Staff comments generate a
+        notification for the citizen.
+      operationId: addReportUpdate
+      parameters:
+        - $ref: "#/components/parameters/ReportIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReportUpdateRequest"
+            example:
+              message: "A municipal team will inspect the area tomorrow morning."
+      responses:
+        "201":
+          description: Report update created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportUpdateResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/files/upload:
+    post:
+      tags:
+        - Files
+      summary: Upload report image
+      description: >
+        Optional backend-based file upload endpoint. The recommended MVP approach
+        may also upload images directly from the mobile app to external storage
+        and send only the resulting imageUrl to the API.
+      operationId: uploadReportImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/FileUploadRequest"
+      responses:
+        "201":
+          description: File uploaded successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUploadResponse"
+              example:
+                fileUrl: "https://storage.example.com/reports/report-001.jpg"
+                fileName: "report-001.jpg"
+                contentType: "image/jpeg"
+                sizeBytes: 482912
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          description: Uploaded file is too large.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: "FILE_TOO_LARGE"
+                message: "The uploaded file exceeds the maximum allowed size."
+
+  /api/notifications/device-token:
+    post:
+      tags:
+        - Notifications
+      summary: Register device push token
+      description: Stores or updates the mobile device token used for push notifications.
+      operationId: registerDeviceToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDeviceTokenRequest"
+            example:
+              token: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
+              platform: "Android"
+      responses:
+        "204":
+          description: Device token registered successfully.
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/notifications:
+    get:
+      tags:
+        - Notifications
+      summary: List current user notifications
+      description: Returns in-app notifications for the authenticated user.
+      operationId: listNotifications
+      parameters:
+        - name: unreadOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/PageSizeQuery"
+      responses:
+        "200":
+          description: Paginated notification list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedNotificationListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/notifications/{notificationId}/read:
+    patch:
+      tags:
+        - Notifications
+      summary: Mark notification as read
+      description: Marks one notification as read if it belongs to the authenticated user.
+      operationId: markNotificationAsRead
+      parameters:
+        - $ref: "#/components/parameters/NotificationIdPath"
+      responses:
+        "204":
+          description: Notification marked as read.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ReportIdPath:
+      name: reportId
+      in: path
+      required: true
+      description: Unique report identifier.
+      schema:
+        type: string
+        format: uuid
+
+    NotificationIdPath:
+      name: notificationId
+      in: path
+      required: true
+      description: Unique notification identifier.
+      schema:
+        type: string
+        format: uuid
+
+    StatusQuery:
+      name: status
+      in: query
+      required: false
+      description: Filter reports by status.
+      schema:
+        $ref: "#/components/schemas/ReportStatus"
+
+    CategoryIdQuery:
+      name: categoryId
+      in: query
+      required: false
+      description: Filter reports by category identifier.
+      schema:
+        type: string
+        format: uuid
+
+    SearchQuery:
+      name: search
+      in: query
+      required: false
+      description: Search text applied to report title, description, or address.
+      schema:
+        type: string
+        maxLength: 100
+
+    FromDateQuery:
+      name: fromDate
+      in: query
+      required: false
+      description: Inclusive lower date filter using ISO 8601 format.
+      schema:
+        type: string
+        format: date-time
+
+    ToDateQuery:
+      name: toDate
+      in: query
+      required: false
+      description: Inclusive upper date filter using ISO 8601 format.
+      schema:
+        type: string
+        format: date-time
+
+    PageQuery:
+      name: page
+      in: query
+      required: false
+      description: Page number starting at 1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeQuery:
+      name: pageSize
+      in: query
+      required: false
+      description: Number of items per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    Unauthorized:
+      description: Authentication is required or the token is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "UNAUTHORIZED"
+            message: "Authentication is required."
+
+    Forbidden:
+      description: The authenticated user does not have permission to perform this action.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "FORBIDDEN"
+            message: "You do not have permission to access this resource."
+
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "NOT_FOUND"
+            message: "The requested resource was not found."
+
+    ValidationError:
+      description: The request contains invalid or missing fields.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationErrorResponse"
+          example:
+            code: "VALIDATION_ERROR"
+            message: "One or more validation errors occurred."
+            errors:
+              title:
+                - "Title is required."
+              categoryId:
+                - "Category is required."
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+
+    UserRole:
+      type: string
+      description: User role used for access control.
+      enum:
+        - Citizen
+        - Staff
+        - Admin
+      example: "Citizen"
+
+    ReportStatus:
+      type: string
+      description: Current report tracking status.
+      enum:
+        - Pending
+        - InReview
+        - Assigned
+        - InProgress
+        - Resolved
+        - Rejected
+      example: "Pending"
+
+    ReportUpdateType:
+      type: string
+      description: Type of report timeline entry.
+      enum:
+        - Comment
+        - StatusChange
+        - System
+      example: "StatusChange"
+
+    Priority:
+      type: string
+      nullable: true
+      description: Optional internal priority assigned by staff.
+      enum:
+        - Low
+        - Medium
+        - High
+        - Critical
+      example: "Medium"
+
+    Platform:
+      type: string
+      description: Mobile platform for device notifications.
+      enum:
+        - Android
+        - iOS
+        - Web
+        - Unknown
+      example: "Android"
+
+    RegisterRequest:
+      type: object
+      required:
+        - fullName
+        - email
+        - password
+      properties:
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: "Juan Pérez"
+        email:
+          type: string
+          format: email
+          maxLength: 150
+          example: "juan@example.com"
+        phone:
+          type: string
+          nullable: true
+          maxLength: 30
+          example: "8888-8888"
+        password:
+          type: string
+          format: password
+          minLength: 6
+          maxLength: 100
+          example: "Password123!"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "ciudadano@test.com"
+        password:
+          type: string
+          format: password
+          example: "123456"
+
+    AuthResponse:
+      type: object
+      required:
+        - token
+        - tokenType
+        - expiresIn
+        - user
+      properties:
+        token:
+          type: string
+          description: JWT access token.
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        tokenType:
+          type: string
+          example: "Bearer"
+        expiresIn:
+          type: integer
+          description: Token lifetime in seconds.
+          example: 86400
+        user:
+          $ref: "#/components/schemas/UserDto"
+
+    UserDto:
+      type: object
+      required:
+        - id
+        - fullName
+        - email
+        - role
+        - isActive
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "52af55ef-2a35-48cc-9e75-1ab3cf92c001"
+        fullName:
+          type: string
+          example: "Juan Pérez"
+        email:
+          type: string
+          format: email
+          example: "juan@example.com"
+        phone:
+          type: string
+          nullable: true
+          example: "8888-8888"
+        role:
+          $ref: "#/components/schemas/UserRole"
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-06-02T18:30:00Z"
+
+    CategoryDto:
+      type: object
+      required:
+        - id
+        - name
+        - isActive
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "3f5b0a82-5f3a-4a44-8f29-8d68f6b3a001"
+        name:
+          type: string
+          example: "Accumulated garbage"
+        description:
+          type: string
+          nullable: true
+          example: "Garbage accumulation in public spaces."
+        icon:
+          type: string
+          nullable: true
+          example: "trash"
+        color:
+          type: string
+          nullable: true
+          example: "#16A34A"
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-06-02T18:30:00Z"
+
+    CategoryListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryDto"
+
+    CreateReportRequest:
+      type: object
+      required:
+        - title
+        - description
+        - categoryId
+        - latitude
+        - longitude
+      properties:
+        title:
+          type: string
+          minLength: 5
+          maxLength: 150
+          example: "Accumulated garbage near the central park"
+        description:
+          type: string
+          minLength: 10
+          maxLength: 2000
+          example: "There have been several garbage bags in this area for multiple days."
+        categoryId:
+          type: string
+          format: uuid
+          example: "3f5b0a82-5f3a-4a44-8f29-8d68f6b3a001"
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 1000
+          example: "https://storage.example.com/reports/report-001.jpg"
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: 10.3271
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: -84.4305
+        address:
+          type: string
+          nullable: true
+          maxLength: 255
+          example: "Ciudad Quesada, San Carlos, Alajuela"
+
+    UpdateReportRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 5
+          maxLength: 150
+          example: "Accumulated garbage near the central park entrance"
+        description:
+          type: string
+          minLength: 10
+          maxLength: 2000
+          example: "The garbage is near the north entrance of the park."
+        categoryId:
+          type: string
+          format: uuid
+          example: "3f5b0a82-5f3a-4a44-8f29-8d68f6b3a001"
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 1000
+          example: "https://storage.example.com/reports/report-001-updated.jpg"
+
+    ChangeReportStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/ReportStatus"
+        message:
+          type: string
+          nullable: true
+          maxLength: 1000
+          example: "The report was assigned to a municipal field team."
+
+    CreateReportUpdateRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          example: "A municipal team will inspect the area tomorrow morning."
+
+    ReportSummaryDto:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - category
+        - latitude
+        - longitude
+        - createdBy
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "a6d2fd95-9d71-4b47-9627-fad5d7822001"
+        title:
+          type: string
+          example: "Accumulated garbage near the central park"
+        description:
+          type: string
+          example: "There have been several garbage bags in this area for multiple days."
+        status:
+          $ref: "#/components/schemas/ReportStatus"
+        priority:
+          $ref: "#/components/schemas/Priority"
+        category:
+          $ref: "#/components/schemas/CategoryDto"
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: "https://storage.example.com/reports/report-001.jpg"
+        latitude:
+          type: number
+          format: double
+          example: 10.3271
+        longitude:
+          type: number
+          format: double
+          example: -84.4305
+        address:
+          type: string
+          nullable: true
+          example: "Ciudad Quesada, San Carlos, Alajuela"
+        createdBy:
+          $ref: "#/components/schemas/UserBasicDto"
+        assignedTo:
+          allOf:
+            - $ref: "#/components/schemas/UserBasicDto"
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-06-02T18:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-06-02T19:10:00Z"
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+
+    ReportDetailDto:
+      allOf:
+        - $ref: "#/components/schemas/ReportSummaryDto"
+        - type: object
+          required:
+            - updates
+          properties:
+            updates:
+              type: array
+              items:
+                $ref: "#/components/schemas/ReportUpdateDto"
+
+    ReportDetailResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: "#/components/schemas/ReportDetailDto"
+
+    PaginatedReportListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportSummaryDto"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    ReportUpdateDto:
+      type: object
+      required:
+        - id
+        - reportId
+        - user
+        - type
+        - message
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "0cb57e24-00dd-46d6-9032-199dfd4b2001"
+        reportId:
+          type: string
+          format: uuid
+          example: "a6d2fd95-9d71-4b47-9627-fad5d7822001"
+        user:
+          $ref: "#/components/schemas/UserBasicDto"
+        type:
+          $ref: "#/components/schemas/ReportUpdateType"
+        message:
+          type: string
+          example: "The report was marked as In Progress."
+        oldStatus:
+          allOf:
+            - $ref: "#/components/schemas/ReportStatus"
+          nullable: true
+          example: "InReview"
+        newStatus:
+          allOf:
+            - $ref: "#/components/schemas/ReportStatus"
+          nullable: true
+          example: "InProgress"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-06-02T19:10:00Z"
+
+    ReportUpdateResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: "#/components/schemas/ReportUpdateDto"
+
+    ReportUpdateListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportUpdateDto"
+
+    UserBasicDto:
+      type: object
+      required:
+        - id
+        - fullName
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "52af55ef-2a35-48cc-9e75-1ab3cf92c001"
+        fullName:
+          type: string
+          example: "Juan Pérez"
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    FileUploadRequest:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Image file. Allowed types should be jpg, jpeg, png, or webp.
+
+    FileUploadResponse:
+      type: object
+      required:
+        - fileUrl
+        - fileName
+        - contentType
+        - sizeBytes
+      properties:
+        fileUrl:
+          type: string
+          format: uri
+          example: "https://storage.example.com/reports/report-001.jpg"
+        fileName:
+          type: string
+          example: "report-001.jpg"
+        contentType:
+          type: string
+          example: "image/jpeg"
+        sizeBytes:
+          type: integer
+          example: 482912
+
+    RegisterDeviceTokenRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          minLength: 10
+          maxLength: 500
+          example: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
+        platform:
+          $ref: "#/components/schemas/Platform"
+
+    NotificationDto:
+      type: object
+      required:
+        - id
+        - userId
+        - title
+        - message
+        - isRead
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "771f9b9e-cb98-4d3d-8788-955a7a442001"
+        userId:
+          type: string
+          format: uuid
+          example: "52af55ef-2a35-48cc-9e75-1ab3cf92c001"
+        reportId:
+          type: string
+          format: uuid
+          nullable: true
+          example: "a6d2fd95-9d71-4b47-9627-fad5d7822001"
+        title:
+          type: string
+          example: "Report status updated"
+        message:
+          type: string
+          example: "Your report is now In Progress."
+        isRead:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-06-02T19:10:00Z"
+
+    PaginatedNotificationListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationDto"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginationMeta:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+        - hasNextPage
+        - hasPreviousPage
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        totalItems:
+          type: integer
+          example: 48
+        totalPages:
+          type: integer
+          example: 3
+        hasNextPage:
+          type: boolean
+          example: true
+        hasPreviousPage:
+          type: boolean
+          example: false
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "NOT_FOUND"
+        message:
+          type: string
+          example: "The requested resource was not found."
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+        - errors
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "One or more validation errors occurred."
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            title:
+              - "Title is required."
+            categoryId:
+              - "Category is required."
