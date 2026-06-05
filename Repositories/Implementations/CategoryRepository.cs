@@ -14,7 +14,7 @@ public sealed class CategoryRepository : ICategoryRepository
     {
         var q = _db.Categories.AsQueryable();
         if (!includeInactive) q = q.Where(c => c.IsActive);
-        return await q.OrderBy(c => c.Name).ToListAsync(ct);
+        return await q.OrderBy(c => c.SortOrder).ThenBy(c => c.Name).ToListAsync(ct);
     }
 
     public Task<Category?> GetByIdAsync(Guid id, CancellationToken ct = default) =>

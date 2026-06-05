@@ -8,5 +8,6 @@ public class CategoryDto
     public string? Icon { get; set; }
     public string? Color { get; set; }
     public bool IsActive { get; set; }
+    public int SortOrder { get; set; }
     public DateTime CreatedAt { get; set; }
 }

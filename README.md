@@ -1,13 +1,13 @@
 # StreetSignal API
 
-REST API for the **StreetSignal** citizen reports platform — built with **.NET 10 (LTS)**, ASP.NET Core, Entity Framework Core, and JWT authentication.
+REST API for the **StreetSignal** citizen reports platform — built with **.NET 8 (LTS)**, ASP.NET Core, Entity Framework Core, and JWT authentication.
 
 The API faithfully implements the contract documented in [`docs/api-contracts/streetsignal-api-contracts.yml`](docs/api-contracts/streetsignal-api-contracts.yml).
 
 ## Tech stack
 
-- **.NET 10** (LTS) · ASP.NET Core Web API · C# 14
-- **EF Core 10** with **SQLite** (development) and **InMemory** (tests)
+- **.NET 8** (LTS) · ASP.NET Core Web API · C# 12
+- **EF Core 8** with **MySQL 8** via `Pomelo.EntityFrameworkCore.MySql` (development & production) and **InMemory** (tests)
 - **JWT bearer** authentication + `PasswordHasher<TUser>` from `Microsoft.AspNetCore.Identity`
 - **xUnit** + **Moq** + **FluentAssertions** for unit tests
 - `Microsoft.AspNetCore.Mvc.Testing` + `WebApplicationFactory<Program>` for endpoint tests
@@ -38,7 +38,7 @@ StreetSignal-Backend/
 
 ## Getting started
 
-> Requires the .NET 10 SDK (`dotnet --version` should report `10.0.x`).
+> Requires the .NET 8 SDK (`dotnet --version` should report `8.0.x`).
 
 ```bash
 dotnet restore
@@ -62,11 +62,11 @@ Swagger UI: `http://localhost:5xxx/swagger`
 
 ## Configuration
 
-`appsettings.json` (and the optional `appsettings.Local.json` override) expose:
+`appsettings.json` (and the optional `appsettings.Local.json` override, which is gitignored) expose:
 
 ```json
 {
-  "ConnectionStrings": { "Default": "Data Source=streetsignal.db" },
+  "ConnectionStrings": { "Default": "Server=localhost;Port=3306;Database=streetsignal;User=root;Password=;SslMode=Preferred;" },
   "Jwt": {
     "Issuer": "StreetSignal",
     "Audience": "StreetSignal",
@@ -75,6 +75,11 @@ Swagger UI: `http://localhost:5xxx/swagger`
   }
 }
 ```
+
+The committed `appsettings.json` points at a local MySQL on `localhost:3306`. For shared/dev environments
+that need a remote database, copy `appsettings.Local.json` and put the real connection string there — it
+is in `.gitignore` and will override `appsettings.json` automatically. The `dev-start.bat` script in the
+repo root regenerates `appsettings.Local.json` with the shared Railway MySQL on every run.
 
 **Production:** override `Jwt:SigningKey` and `ConnectionStrings:Default` via environment variables or your secret manager.
 

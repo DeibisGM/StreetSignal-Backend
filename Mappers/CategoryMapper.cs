@@ -13,6 +13,7 @@ public static class CategoryMapper
         Icon = category.Icon,
         Color = category.Color,
         IsActive = category.IsActive,
+        SortOrder = category.SortOrder,
         CreatedAt = category.CreatedAt
     };
 }
