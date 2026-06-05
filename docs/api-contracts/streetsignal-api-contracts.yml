@@ -1103,16 +1103,17 @@ components:
         pagination:
           $ref: "#/components/schemas/PaginationMeta"
 
-    ReportUpdateDto:
-      type: object
-      required:
-        - id
-        - reportId
-        - user
-        - type
-        - message
-        - createdAt
-      properties:
+      ReportUpdateDto:
+        type: object
+        required:
+          - id
+          - reportId
+          - user
+          - type
+          - message
+          - isOfficial
+          - createdAt
+        properties:
         id:
           type: string
           format: uuid
@@ -1125,12 +1126,15 @@ components:
           $ref: "#/components/schemas/UserBasicDto"
         type:
           $ref: "#/components/schemas/ReportUpdateType"
-        message:
-          type: string
-          example: "The report was marked as In Progress."
-        oldStatus:
-          allOf:
-            - $ref: "#/components/schemas/ReportStatus"
+          message:
+            type: string
+            example: "The report was marked as In Progress."
+          isOfficial:
+            type: boolean
+            example: true
+          oldStatus:
+            allOf:
+              - $ref: "#/components/schemas/ReportStatus"
           nullable: true
           example: "InReview"
         newStatus:

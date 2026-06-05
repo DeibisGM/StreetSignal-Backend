@@ -53,8 +53,8 @@ public class ReportUpdateServiceTests
                 {
                     Id = Guid.NewGuid(),
                     ReportId = r.Id,
-                    UserId = staff,
-                    User = new User { Id = staff, FullName = "S", Role = UserRole.Staff, Email = "s@x.com" },
+                    CreatedById = staff,
+                    CreatedBy = new User { Id = staff, FullName = "S", Role = UserRole.Staff, Email = "s@x.com" },
                     Type = ReportUpdateType.Comment,
                     Message = "hi"
                 });
@@ -77,8 +77,8 @@ public class ReportUpdateServiceTests
                 {
                     Id = Guid.NewGuid(),
                     ReportId = r.Id,
-                    UserId = owner,
-                    User = new User { Id = owner, FullName = "O", Role = UserRole.Citizen, Email = "o@x.com" },
+                    CreatedById = owner,
+                    CreatedBy = new User { Id = owner, FullName = "O", Role = UserRole.Citizen, Email = "o@x.com" },
                     Type = ReportUpdateType.Comment,
                     Message = "self"
                 });

@@ -62,11 +62,6 @@ public class AppDbContext : DbContext
                 .HasForeignKey(x => x.CreatedById)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            e.HasOne(x => x.AssignedTo)
-                .WithMany()
-                .HasForeignKey(x => x.AssignedToId)
-                .OnDelete(DeleteBehavior.SetNull);
-
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.CategoryId);
             e.HasIndex(x => x.CreatedById);
@@ -79,6 +74,7 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Type).HasConversion<string>().IsRequired();
             e.Property(x => x.Message).IsRequired().HasMaxLength(1000);
+            e.Property(x => x.IsOfficial).IsRequired();
             e.Property(x => x.OldStatus).HasConversion<string>();
             e.Property(x => x.NewStatus).HasConversion<string>();
 
@@ -87,9 +83,9 @@ public class AppDbContext : DbContext
                 .HasForeignKey(x => x.ReportId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            e.HasOne(x => x.User)
+            e.HasOne(x => x.CreatedBy)
                 .WithMany()
-                .HasForeignKey(x => x.UserId)
+                .HasForeignKey(x => x.CreatedById)
                 .OnDelete(DeleteBehavior.Restrict);
 
             e.HasIndex(x => new { x.ReportId, x.CreatedAt });

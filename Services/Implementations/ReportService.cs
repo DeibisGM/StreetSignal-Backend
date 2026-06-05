@@ -78,10 +78,11 @@ public sealed class ReportService : IReportService
         await _updates.AddAsync(new ReportUpdate
         {
             ReportId = report.Id,
-            UserId = currentUserId,
+            CreatedById = currentUserId,
             Type = ReportUpdateType.System,
             Message = "Report submitted by the citizen.",
-            NewStatus = ReportStatus.Pending
+            NewStatus = ReportStatus.Pending,
+            IsOfficial = false
         }, ct);
 
         await _reports.SaveChangesAsync(ct);
@@ -135,13 +136,14 @@ public sealed class ReportService : IReportService
         await _updates.AddAsync(new ReportUpdate
         {
             ReportId = report.Id,
-            UserId = currentUserId,
+            CreatedById = currentUserId,
             Type = ReportUpdateType.StatusChange,
             Message = string.IsNullOrWhiteSpace(req.Message)
                 ? $"Status changed from {oldStatus} to {newStatus}."
                 : req.Message.Trim(),
             OldStatus = oldStatus,
-            NewStatus = newStatus
+            NewStatus = newStatus,
+            IsOfficial = true
         }, ct);
 
         // Notify the citizen
