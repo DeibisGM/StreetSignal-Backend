@@ -11,12 +11,12 @@ public class ReportSummaryDto
     public Priority? Priority { get; set; }
     public CategoryDto Category { get; set; } = new();
     public string? ImageUrl { get; set; }
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public string? Address { get; set; }
     public UserBasicDto CreatedBy { get; set; } = new();
     public UserBasicDto? AssignedTo { get; set; }
     public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
 }
