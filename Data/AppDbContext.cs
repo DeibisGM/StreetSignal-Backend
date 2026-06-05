@@ -62,9 +62,15 @@ public class AppDbContext : DbContext
                 .HasForeignKey(x => x.CreatedById)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            e.HasOne(x => x.AssignedTo)
+                .WithMany()
+                .HasForeignKey(x => x.AssignedToId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.CategoryId);
             e.HasIndex(x => x.CreatedById);
+            e.HasIndex(x => x.AssignedToId);
             e.HasIndex(x => x.CreatedAt);
         });
 

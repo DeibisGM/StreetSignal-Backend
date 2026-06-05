@@ -16,17 +16,20 @@ public sealed class ReportService : IReportService
     private readonly ICategoryRepository _categories;
     private readonly IReportUpdateRepository _updates;
     private readonly INotificationRepository _notifications;
+    private readonly IUserRepository _users;
 
     public ReportService(
         IReportRepository reports,
         ICategoryRepository categories,
         IReportUpdateRepository updates,
-        INotificationRepository notifications)
+        INotificationRepository notifications,
+        IUserRepository users)
     {
         _reports = reports;
         _categories = categories;
         _updates = updates;
         _notifications = notifications;
+        _users = users;
     }
 
     public async Task<PaginatedReportListResponse> ListForStaffAsync(
@@ -128,21 +131,64 @@ public sealed class ReportService : IReportService
 
         var oldStatus = report.Status;
         var newStatus = req.Status;
+        var statusChanged = oldStatus != newStatus;
+        var oldPriority = report.Priority;
+        var oldAssignedToId = report.AssignedToId;
+
+        User? assignedTo = null;
+        if (req.AssignedToId.HasValue)
+        {
+            assignedTo = await _users.GetByIdAsync(req.AssignedToId.Value, ct);
+            if (assignedTo is null || assignedTo.Role != UserRole.Staff || !assignedTo.IsActive)
+            {
+                throw new BadRequestException(ErrorCodes.ValidationError, "Assigned staff member is not valid.");
+            }
+        }
 
         report.Status = newStatus;
+        if (req.Priority.HasValue)
+        {
+            report.Priority = req.Priority.Value;
+        }
+        if (req.AssignedToId.HasValue)
+        {
+            report.AssignedToId = req.AssignedToId.Value;
+            report.AssignedTo = assignedTo;
+        }
         report.UpdatedAt = DateTime.UtcNow;
-        if (newStatus == ReportStatus.Resolved) report.ResolvedAt = DateTime.UtcNow;
+        if (statusChanged && newStatus == ReportStatus.Resolved) report.ResolvedAt = DateTime.UtcNow;
+        if (statusChanged && newStatus != ReportStatus.Resolved && oldStatus == ReportStatus.Resolved)
+        {
+            report.ResolvedAt = null;
+        }
+
+        var changed = oldStatus != newStatus
+            || oldPriority != report.Priority
+            || oldAssignedToId != report.AssignedToId;
+
+        if (!changed && string.IsNullOrWhiteSpace(req.Message))
+        {
+            throw new BadRequestException(ErrorCodes.ValidationError, "No changes were provided.");
+        }
+
+        var changeSummary = BuildChangeSummary(
+            oldStatus,
+            newStatus,
+            oldPriority,
+            report.Priority,
+            oldAssignedToId != report.AssignedToId,
+            report.AssignedTo?.FullName);
 
         await _updates.AddAsync(new ReportUpdate
         {
             ReportId = report.Id,
             CreatedById = currentUserId,
-            Type = ReportUpdateType.StatusChange,
+            Type = statusChanged ? ReportUpdateType.StatusChange : ReportUpdateType.System,
             Message = string.IsNullOrWhiteSpace(req.Message)
-                ? $"Status changed from {oldStatus} to {newStatus}."
+                ? changeSummary
                 : req.Message.Trim(),
-            OldStatus = oldStatus,
-            NewStatus = newStatus,
+            OldStatus = statusChanged ? oldStatus : null,
+            NewStatus = statusChanged ? newStatus : null,
             IsOfficial = true
         }, ct);
 
@@ -159,6 +205,36 @@ public sealed class ReportService : IReportService
 
         var saved = await _reports.GetByIdAsync(report.Id, includeUpdates: true, ct)!;
         return new ReportDetailResponse { Data = saved!.ToDetailDto() };
+    }
+
+    private static string BuildChangeSummary(
+        ReportStatus oldStatus,
+        ReportStatus newStatus,
+        Priority? oldPriority,
+        Priority? newPriority,
+        bool assignedChanged,
+        string? assignedToName)
+    {
+        var parts = new List<string>();
+
+        if (oldStatus != newStatus)
+        {
+            parts.Add($"Status changed from {oldStatus} to {newStatus}");
+        }
+
+        if (oldPriority != newPriority && newPriority.HasValue)
+        {
+            parts.Add($"Priority set to {newPriority}");
+        }
+
+        if (assignedChanged && !string.IsNullOrWhiteSpace(assignedToName))
+        {
+            parts.Add($"Assigned to {assignedToName}");
+        }
+
+        return parts.Count > 0
+            ? string.Join(". ", parts) + "."
+            : $"Status updated to {newStatus}.";
     }
 
     private static (int Page, int PageSize) NormalizePaging(int page, int pageSize)

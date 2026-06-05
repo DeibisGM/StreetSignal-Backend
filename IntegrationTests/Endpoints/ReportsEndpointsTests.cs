@@ -119,9 +119,24 @@ public class ReportsEndpointsTests : IClassFixture<StreetSignalWebAppFactory>
         var create = await citizenClient.PostAsJsonAsync("/api/reports", ValidReport());
         var created = await create.Content.ReadFromJsonAsync<ReportDetailResponse>();
 
-        // Staff changes the status
+        // Staff assigns the report to a staff member
         var staffClient = await _factory.AuthedAsync(StreetSignalWebAppFactory.StaffEmail);
-        var patch = await staffClient.PatchAsJsonAsync($"/api/reports/{created!.Data.Id}/status",
+        var assign = await staffClient.PatchAsJsonAsync($"/api/reports/{created!.Data.Id}/status",
+            new ChangeReportStatusRequest
+            {
+                Status = ReportStatus.Assigned,
+                AssignedToId = _factory.StaffId,
+                Priority = Priority.High,
+                Message = "Assigned to staff member"
+            });
+
+        assign.StatusCode.Should().Be(HttpStatusCode.OK);
+        var assignedDetail = await assign.Content.ReadFromJsonAsync<ReportDetailResponse>();
+        assignedDetail!.Data.AssignedTo.Should().NotBeNull();
+        assignedDetail.Data.AssignedTo!.Id.Should().Be(_factory.StaffId);
+
+        // Staff changes the status
+        var patch = await staffClient.PatchAsJsonAsync($"/api/reports/{created.Data.Id}/status",
             new ChangeReportStatusRequest { Status = ReportStatus.InProgress, Message = "Working on it" });
 
         patch.StatusCode.Should().Be(HttpStatusCode.OK);

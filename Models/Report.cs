@@ -22,6 +22,9 @@ public class Report
     public Guid CreatedById { get; set; }
     public User? CreatedBy { get; set; }
 
+    public Guid? AssignedToId { get; set; }
+    public User? AssignedTo { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }

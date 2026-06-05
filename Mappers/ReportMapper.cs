@@ -31,6 +31,7 @@ public static class ReportMapper
         Longitude = r.Longitude ?? 0,
         Address = r.Address,
         CreatedBy = r.CreatedBy!.ToBasicDto(),
+        AssignedTo = r.AssignedTo?.ToBasicDto(),
         CreatedAt = r.CreatedAt,
         UpdatedAt = r.UpdatedAt,
         ResolvedAt = r.ResolvedAt
@@ -50,11 +51,12 @@ public static class ReportMapper
             ImageUrl = summary.ImageUrl,
             Latitude = summary.Latitude,
             Longitude = summary.Longitude,
-            Address = summary.Address,
-            CreatedBy = summary.CreatedBy,
-            CreatedAt = summary.CreatedAt,
-            UpdatedAt = summary.UpdatedAt,
-            ResolvedAt = summary.ResolvedAt,
+        Address = summary.Address,
+        CreatedBy = summary.CreatedBy,
+        AssignedTo = summary.AssignedTo,
+        CreatedAt = summary.CreatedAt,
+        UpdatedAt = summary.UpdatedAt,
+        ResolvedAt = summary.ResolvedAt,
             Updates = r.Updates
                 .OrderBy(u => u.CreatedAt)
                 .Select(u => u.ToDto())

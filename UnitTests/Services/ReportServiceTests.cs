@@ -16,8 +16,14 @@ public class ReportServiceTests
     private readonly Mock<ICategoryRepository> _categories = new();
     private readonly Mock<IReportUpdateRepository> _updates = new();
     private readonly Mock<INotificationRepository> _notifications = new();
+    private readonly Mock<IUserRepository> _users = new();
 
-    private ReportService Build() => new(_reports.Object, _categories.Object, _updates.Object, _notifications.Object);
+    private ReportService Build() => new(
+        _reports.Object,
+        _categories.Object,
+        _updates.Object,
+        _notifications.Object,
+        _users.Object);
 
     private static Report MakeReport(Guid ownerId, ReportStatus status = ReportStatus.Pending) => new()
     {
@@ -138,6 +144,31 @@ public class ReportServiceTests
 
         _notifications.Verify(n => n.AddAsync(It.Is<Notification>(x =>
             x.UserId == owner && x.ReportId == report.Id), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeStatus_updates_priority_and_assignment()
+    {
+        var owner = Guid.NewGuid();
+        var staff = Guid.NewGuid();
+        var report = MakeReport(owner, ReportStatus.Pending);
+        _reports.Setup(r => r.GetByIdAsync(report.Id, true, It.IsAny<CancellationToken>())).ReturnsAsync(report);
+        _users.Setup(u => u.GetByIdAsync(staff, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = staff, FullName = "Staff", Role = UserRole.Staff, Email = "s@x.com", IsActive = true });
+        var sut = Build();
+
+        await sut.ChangeStatusAsync(report.Id,
+            new ChangeReportStatusRequest
+            {
+                Status = ReportStatus.Assigned,
+                Priority = Priority.High,
+                AssignedToId = staff,
+                Message = "Assigned to staff"
+            },
+            currentUserId: Guid.NewGuid());
+
+        report.Priority.Should().Be(Priority.High);
+        report.AssignedToId.Should().Be(staff);
     }
 
     [Fact]
