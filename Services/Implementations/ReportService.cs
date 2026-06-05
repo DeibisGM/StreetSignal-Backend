@@ -16,17 +16,20 @@ public sealed class ReportService : IReportService
     private readonly ICategoryRepository _categories;
     private readonly IReportUpdateRepository _updates;
     private readonly INotificationRepository _notifications;
+    private readonly IPushNotificationService _push;
 
     public ReportService(
         IReportRepository reports,
         ICategoryRepository categories,
         IReportUpdateRepository updates,
-        INotificationRepository notifications)
+        INotificationRepository notifications,
+        IPushNotificationService push)
     {
         _reports = reports;
         _categories = categories;
         _updates = updates;
         _notifications = notifications;
+        _push = push;
     }
 
     public async Task<PaginatedReportListResponse> ListForStaffAsync(
@@ -146,16 +149,21 @@ public sealed class ReportService : IReportService
             IsOfficial = true
         }, ct);
 
-        // Notify the citizen
+        const string notifTitle = "Report status updated";
+        var notifBody = $"Your report is now {newStatus}.";
+
         await _notifications.AddAsync(new Notification
         {
             UserId = report.CreatedById,
             ReportId = report.Id,
-            Title = "Report status updated",
-            Message = $"Your report is now {newStatus}."
+            Title = notifTitle,
+            Message = notifBody
         }, ct);
 
         await _reports.SaveChangesAsync(ct);
+
+        // Fire-and-forget push — doesn't affect the HTTP response
+        _ = _push.SendAsync(report.CreatedById, notifTitle, notifBody);
 
         var saved = await _reports.GetByIdAsync(report.Id, includeUpdates: true, ct)!;
         return new ReportDetailResponse { Data = saved!.ToDetailDto() };

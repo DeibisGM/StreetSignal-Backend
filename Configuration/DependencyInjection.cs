@@ -1,4 +1,6 @@
 using System.Text;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
@@ -25,7 +27,7 @@ public static class DependencyInjection
         services.AddPersistence(config);
         services.AddJwtAuth(config);
         services.AddRepositories();
-        services.AddDomainServices();
+        services.AddDomainServices(config);
         services.AddApi();
         services.AddSwagger();
         return services;
@@ -104,7 +106,7 @@ public static class DependencyInjection
         services.AddScoped<IDeviceTokenRepository, DeviceTokenRepository>();
     }
 
-    private static void AddDomainServices(this IServiceCollection services)
+    private static void AddDomainServices(this IServiceCollection services, IConfiguration config)
     {
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
@@ -113,6 +115,27 @@ public static class DependencyInjection
         services.AddScoped<IReportUpdateService, ReportUpdateService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IFileService, FileService>();
+        services.AddFirebasePush(config);
+    }
+
+    private static void AddFirebasePush(this IServiceCollection services, IConfiguration config)
+    {
+        var credPath = config["Firebase:CredentialPath"];
+        if (!string.IsNullOrWhiteSpace(credPath) && File.Exists(credPath))
+        {
+            if (FirebaseApp.DefaultInstance is null)
+            {
+                FirebaseApp.Create(new AppOptions
+                {
+                    Credential = GoogleCredential.FromFile(credPath),
+                });
+            }
+            services.AddScoped<IPushNotificationService, FirebasePushNotificationService>();
+        }
+        else
+        {
+            services.AddScoped<IPushNotificationService, NullPushNotificationService>();
+        }
     }
 
     private static void AddApi(this IServiceCollection services)
