@@ -15,7 +15,6 @@ public sealed class ReportRepository : IReportRepository
         var q = _db.Reports
             .Include(r => r.Category)
             .Include(r => r.CreatedBy)
-            .Include(r => r.AssignedTo)
             .AsQueryable();
 
         if (filter.Status.HasValue) q = q.Where(r => r.Status == filter.Status.Value);
@@ -48,11 +47,10 @@ public sealed class ReportRepository : IReportRepository
         var q = _db.Reports
             .Include(r => r.Category)
             .Include(r => r.CreatedBy)
-            .Include(r => r.AssignedTo)
             .AsQueryable();
 
         if (includeUpdates)
-            q = q.Include(r => r.Updates).ThenInclude(u => u.User);
+            q = q.Include(r => r.Updates).ThenInclude(u => u.CreatedBy);
 
         return q.FirstOrDefaultAsync(r => r.Id == id, ct);
     }
