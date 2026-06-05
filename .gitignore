@@ -7,6 +7,8 @@
 # Build results
 bin/
 obj/
+bin_check*/
+**/bin_check*/
 
 # Visual Studio
 .vs/

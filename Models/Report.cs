@@ -12,8 +12,8 @@ public class Report
     public Category? Category { get; set; }
 
     public string? ImageUrl { get; set; }
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public string? Address { get; set; }
 
     public ReportStatus Status { get; set; } = ReportStatus.Pending;
@@ -22,11 +22,8 @@ public class Report
     public Guid CreatedById { get; set; }
     public User? CreatedBy { get; set; }
 
-    public Guid? AssignedToId { get; set; }
-    public User? AssignedTo { get; set; }
-
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
 
     public ICollection<ReportUpdate> Updates { get; set; } = new List<ReportUpdate>();

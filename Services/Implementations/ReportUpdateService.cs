@@ -51,9 +51,10 @@ public sealed class ReportUpdateService : IReportUpdateService
         var entity = new ReportUpdate
         {
             ReportId = reportId,
-            UserId = currentUserId,
+            CreatedById = currentUserId,
             Type = ReportUpdateType.Comment,
-            Message = req.Message.Trim()
+            Message = req.Message.Trim(),
+            IsOfficial = currentIsStaff
         };
 
         await _updates.AddAsync(entity, ct);
