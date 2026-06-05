@@ -12,8 +12,8 @@ public class Report
     public Category? Category { get; set; }
 
     public string? ImageUrl { get; set; }
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public string? Address { get; set; }
 
     public ReportStatus Status { get; set; } = ReportStatus.Pending;
