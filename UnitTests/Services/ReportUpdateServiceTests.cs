@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using StreetSignalApi.Common.Enums;
 using StreetSignalApi.Common.Exceptions;
@@ -16,8 +17,9 @@ public class ReportUpdateServiceTests
     private readonly Mock<IReportUpdateRepository> _updates = new();
     private readonly Mock<INotificationRepository> _notifications = new();
     private readonly Mock<IPushNotificationService> _push = new();
+    private readonly Mock<ILogger<ReportUpdateService>> _logger = new();
 
-    private ReportUpdateService Build() => new(_reports.Object, _updates.Object, _notifications.Object, _push.Object);
+    private ReportUpdateService Build() => new(_reports.Object, _updates.Object, _notifications.Object, _push.Object, _logger.Object);
 
     private static Report Report(Guid ownerId) => new()
     {

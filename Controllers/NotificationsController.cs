@@ -45,6 +45,17 @@ public sealed class NotificationsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("~/api/device-tokens")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RegisterDeviceTokenAlias([FromBody] RegisterDeviceTokenRequest req, CancellationToken ct)
+    {
+        var userId = _current.RequireUserId();
+        await _notifications.RegisterDeviceTokenAsync(req, userId, ct);
+        return NoContent();
+    }
+
     [HttpPatch("{notificationId:guid}/read")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]

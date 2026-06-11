@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using StreetSignalApi.Common.Enums;
 using StreetSignalApi.Common.Errors;
@@ -17,9 +18,11 @@ public class ReportServiceTests
     private readonly Mock<ICategoryRepository> _categories = new();
     private readonly Mock<IReportUpdateRepository> _updates = new();
     private readonly Mock<INotificationRepository> _notifications = new();
+    private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IPushNotificationService> _push = new();
+    private readonly Mock<ILogger<ReportService>> _logger = new();
 
-    private ReportService Build() => new(_reports.Object, _categories.Object, _updates.Object, _notifications.Object, _push.Object);
+    private ReportService Build() => new(_reports.Object, _categories.Object, _updates.Object, _notifications.Object, _users.Object, _push.Object, _logger.Object);
 
     private static Report MakeReport(Guid ownerId, ReportStatus status = ReportStatus.Pending) => new()
     {
@@ -92,6 +95,118 @@ public class ReportServiceTests
 
         var ex = await act.Should().ThrowAsync<BadRequestException>();
         ex.Which.Code.Should().Be(ErrorCodes.ValidationError);
+    }
+
+    [Fact]
+    public async Task Create_notifies_each_active_staff_member()
+    {
+        var owner = Guid.NewGuid();
+        var catId = Guid.NewGuid();
+        Report? createdReport = null;
+
+        _categories.Setup(c => c.GetByIdAsync(catId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Category { Id = catId, IsActive = true, Name = "Cat" });
+        _reports.Setup(r => r.AddAsync(It.IsAny<Report>(), It.IsAny<CancellationToken>()))
+            .Callback<Report, CancellationToken>((report, _) => createdReport = report)
+            .Returns(Task.CompletedTask);
+        _reports.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), true, It.IsAny<CancellationToken>()))
+            .Returns((Guid id, bool includeUpdates, CancellationToken ct) => Task.FromResult(
+                createdReport is null
+                    ? null
+                    : new Report
+                    {
+                        Id = createdReport.Id,
+                        Title = createdReport.Title,
+                        Description = createdReport.Description,
+                        CategoryId = createdReport.CategoryId,
+                        Category = new Category { Id = catId, IsActive = true, Name = "Cat" },
+                        CreatedById = owner,
+                        CreatedBy = new User { Id = owner, FullName = "Citizen", Role = UserRole.Citizen, Email = "c@x.com" },
+                        Latitude = createdReport.Latitude,
+                        Longitude = createdReport.Longitude,
+                        Status = createdReport.Status,
+                        CreatedAt = createdReport.CreatedAt,
+                        UpdatedAt = createdReport.UpdatedAt
+                    }));
+        _users.Setup(u => u.GetActiveStaffAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<User>
+            {
+                new() { Id = Guid.NewGuid(), FullName = "Staff One", Role = UserRole.Staff, Email = "s1@x.com" },
+                new() { Id = Guid.NewGuid(), FullName = "Staff Two", Role = UserRole.Staff, Email = "s2@x.com" }
+            });
+
+        var sut = Build();
+
+        await sut.CreateAsync(new CreateReportRequest
+        {
+            Title = "Broken streetlight",
+            Description = "The lamp on the corner is out.",
+            CategoryId = catId,
+            Latitude = 10,
+            Longitude = -84
+        }, owner);
+
+        createdReport.Should().NotBeNull();
+        _notifications.Verify(n => n.AddAsync(It.Is<Notification>(x =>
+            x.ReportId == createdReport!.Id &&
+            x.Title == "Nuevo reporte" &&
+            x.Message.Contains("Broken streetlight")), It.IsAny<CancellationToken>()), Times.Exactly(2));
+
+        _push.Verify(p => p.SendAsync(It.IsAny<Guid>(), "Nuevo reporte", It.Is<string>(body => body.Contains("Broken streetlight")), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task Create_returns_success_when_push_fails()
+    {
+        var owner = Guid.NewGuid();
+        var catId = Guid.NewGuid();
+        var staffId = Guid.NewGuid();
+        Report? createdReport = null;
+
+        _categories.Setup(c => c.GetByIdAsync(catId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Category { Id = catId, IsActive = true, Name = "Cat" });
+        _reports.Setup(r => r.AddAsync(It.IsAny<Report>(), It.IsAny<CancellationToken>()))
+            .Callback<Report, CancellationToken>((report, _) => createdReport = report)
+            .Returns(Task.CompletedTask);
+        _reports.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), true, It.IsAny<CancellationToken>()))
+            .Returns((Guid id, bool includeUpdates, CancellationToken ct) => Task.FromResult(
+                createdReport is null
+                    ? null
+                    : new Report
+                    {
+                        Id = createdReport.Id,
+                        Title = createdReport.Title,
+                        Description = createdReport.Description,
+                        CategoryId = createdReport.CategoryId,
+                        Category = new Category { Id = catId, IsActive = true, Name = "Cat" },
+                        CreatedById = owner,
+                        CreatedBy = new User { Id = owner, FullName = "Citizen", Role = UserRole.Citizen, Email = "c@x.com" },
+                        Latitude = createdReport.Latitude,
+                        Longitude = createdReport.Longitude,
+                        Status = createdReport.Status,
+                        CreatedAt = createdReport.CreatedAt,
+                        UpdatedAt = createdReport.UpdatedAt
+                    }));
+        _users.Setup(u => u.GetActiveStaffAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<User>
+            {
+                new() { Id = staffId, FullName = "Staff One", Role = UserRole.Staff, Email = "s1@x.com" }
+            });
+        _push.Setup(p => p.SendAsync(staffId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Firebase unavailable"));
+
+        var sut = Build();
+
+        var result = await sut.CreateAsync(new CreateReportRequest
+        {
+            Title = "Broken streetlight",
+            Description = "The lamp on the corner is out.",
+            CategoryId = catId,
+            Latitude = 10,
+            Longitude = -84
+        }, owner);
+
+        result.Data.Title.Should().Be("Broken streetlight");
     }
 
     [Fact]

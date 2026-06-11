@@ -15,17 +15,20 @@ public sealed class ReportUpdateService : IReportUpdateService
     private readonly IReportUpdateRepository _updates;
     private readonly INotificationRepository _notifications;
     private readonly IPushNotificationService _push;
+    private readonly ILogger<ReportUpdateService> _logger;
 
     public ReportUpdateService(
         IReportRepository reports,
         IReportUpdateRepository updates,
         INotificationRepository notifications,
-        IPushNotificationService push)
+        IPushNotificationService push,
+        ILogger<ReportUpdateService> logger)
     {
         _reports = reports;
         _updates = updates;
         _notifications = notifications;
         _push = push;
+        _logger = logger;
     }
 
     public async Task<ReportUpdateListResponse> ListAsync(Guid reportId, Guid currentUserId, bool currentIsStaff, CancellationToken ct = default)
@@ -75,13 +78,29 @@ public sealed class ReportUpdateService : IReportUpdateService
                 Title = notifTitle,
                 Message = notifBody
             }, ct);
-
-            _ = _push.SendAsync(report.CreatedById, notifTitle, notifBody);
         }
 
         await _updates.SaveChangesAsync(ct);
 
         var saved = await _updates.GetByIdAsync(entity.Id, ct)!;
+
+        if (currentIsStaff && report.CreatedById != currentUserId)
+        {
+            await TrySendPushAsync(report.CreatedById, "New comment on your report", req.Message.Trim());
+        }
+
         return new ReportUpdateResponse { Data = saved!.ToDto() };
+    }
+
+    private async Task TrySendPushAsync(Guid userId, string title, string body)
+    {
+        try
+        {
+            await _push.SendAsync(userId, title, body, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Push notification failed for user {UserId}", userId);
+        }
     }
 }

@@ -22,6 +22,8 @@ namespace StreetSignalApi.Configuration;
 
 public static class DependencyInjection
 {
+    private static readonly object FirebaseInitLock = new();
+
     public static IServiceCollection AddStreetSignal(this IServiceCollection services, IConfiguration config)
     {
         services.AddPersistence(config);
@@ -120,15 +122,19 @@ public static class DependencyInjection
 
     private static void AddFirebasePush(this IServiceCollection services, IConfiguration config)
     {
-        var credPath = config["Firebase:CredentialPath"];
+        var credPath = config["Firebase:CredentialPath"]
+            ?? Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
         if (!string.IsNullOrWhiteSpace(credPath) && File.Exists(credPath))
         {
-            if (FirebaseApp.DefaultInstance is null)
+            lock (FirebaseInitLock)
             {
-                FirebaseApp.Create(new AppOptions
+                if (FirebaseApp.DefaultInstance is null)
                 {
-                    Credential = GoogleCredential.FromFile(credPath),
-                });
+                    FirebaseApp.Create(new AppOptions
+                    {
+                        Credential = GoogleCredential.FromFile(credPath),
+                    });
+                }
             }
             services.AddScoped<IPushNotificationService, FirebasePushNotificationService>();
         }
