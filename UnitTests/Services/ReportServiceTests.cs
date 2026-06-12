@@ -128,7 +128,7 @@ public class ReportServiceTests
                         CreatedAt = createdReport.CreatedAt,
                         UpdatedAt = createdReport.UpdatedAt
                     }));
-        _users.Setup(u => u.GetActiveStaffAsync(It.IsAny<CancellationToken>()))
+        _users.Setup(u => u.ListStaffAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<User>
             {
                 new() { Id = Guid.NewGuid(), FullName = "Staff One", Role = UserRole.Staff, Email = "s1@x.com" },
@@ -187,7 +187,7 @@ public class ReportServiceTests
                         CreatedAt = createdReport.CreatedAt,
                         UpdatedAt = createdReport.UpdatedAt
                     }));
-        _users.Setup(u => u.GetActiveStaffAsync(It.IsAny<CancellationToken>()))
+        _users.Setup(u => u.ListStaffAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<User>
             {
                 new() { Id = staffId, FullName = "Staff One", Role = UserRole.Staff, Email = "s1@x.com" }
@@ -255,6 +255,31 @@ public class ReportServiceTests
 
         _notifications.Verify(n => n.AddAsync(It.Is<Notification>(x =>
             x.UserId == owner && x.ReportId == report.Id), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeStatus_updates_priority_and_assignment()
+    {
+        var owner = Guid.NewGuid();
+        var staff = Guid.NewGuid();
+        var report = MakeReport(owner, ReportStatus.Pending);
+        _reports.Setup(r => r.GetByIdAsync(report.Id, true, It.IsAny<CancellationToken>())).ReturnsAsync(report);
+        _users.Setup(u => u.GetByIdAsync(staff, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = staff, FullName = "Staff", Role = UserRole.Staff, Email = "s@x.com", IsActive = true });
+        var sut = Build();
+
+        await sut.ChangeStatusAsync(report.Id,
+            new ChangeReportStatusRequest
+            {
+                Status = ReportStatus.Assigned,
+                Priority = Priority.High,
+                AssignedToId = staff,
+                Message = "Assigned to staff"
+            },
+            currentUserId: Guid.NewGuid());
+
+        report.Priority.Should().Be(Priority.High);
+        report.AssignedToId.Should().Be(staff);
     }
 
     [Fact]

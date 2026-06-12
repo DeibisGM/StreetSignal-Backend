@@ -31,6 +31,7 @@ public static class ReportMapper
         Longitude = r.Longitude ?? 0,
         Address = r.Address,
         CreatedBy = r.CreatedBy?.ToBasicDto() ?? new UserBasicDto { Id = r.CreatedById },
+        AssignedTo = r.AssignedTo?.ToBasicDto(),
         CreatedAt = r.CreatedAt,
         UpdatedAt = r.UpdatedAt,
         ResolvedAt = r.ResolvedAt
@@ -52,6 +53,7 @@ public static class ReportMapper
             Longitude = summary.Longitude,
             Address = summary.Address,
             CreatedBy = summary.CreatedBy,
+            AssignedTo = summary.AssignedTo,
             CreatedAt = summary.CreatedAt,
             UpdatedAt = summary.UpdatedAt,
             ResolvedAt = summary.ResolvedAt,
