@@ -14,15 +14,21 @@ public sealed class ReportUpdateService : IReportUpdateService
     private readonly IReportRepository _reports;
     private readonly IReportUpdateRepository _updates;
     private readonly INotificationRepository _notifications;
+    private readonly IPushNotificationService _push;
+    private readonly ILogger<ReportUpdateService> _logger;
 
     public ReportUpdateService(
         IReportRepository reports,
         IReportUpdateRepository updates,
-        INotificationRepository notifications)
+        INotificationRepository notifications,
+        IPushNotificationService push,
+        ILogger<ReportUpdateService> logger)
     {
         _reports = reports;
         _updates = updates;
         _notifications = notifications;
+        _push = push;
+        _logger = logger;
     }
 
     public async Task<ReportUpdateListResponse> ListAsync(Guid reportId, Guid currentUserId, bool currentIsStaff, CancellationToken ct = default)
@@ -62,18 +68,39 @@ public sealed class ReportUpdateService : IReportUpdateService
         // Staff comments notify the citizen
         if (currentIsStaff && report.CreatedById != currentUserId)
         {
+            const string notifTitle = "New comment on your report";
+            var notifBody = req.Message.Trim();
+
             await _notifications.AddAsync(new Notification
             {
                 UserId = report.CreatedById,
                 ReportId = report.Id,
-                Title = "New comment on your report",
-                Message = req.Message.Trim()
+                Title = notifTitle,
+                Message = notifBody
             }, ct);
         }
 
         await _updates.SaveChangesAsync(ct);
 
         var saved = await _updates.GetByIdAsync(entity.Id, ct)!;
+
+        if (currentIsStaff && report.CreatedById != currentUserId)
+        {
+            await TrySendPushAsync(report.CreatedById, "New comment on your report", req.Message.Trim());
+        }
+
         return new ReportUpdateResponse { Data = saved!.ToDto() };
+    }
+
+    private async Task TrySendPushAsync(Guid userId, string title, string body)
+    {
+        try
+        {
+            await _push.SendAsync(userId, title, body, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Push notification failed for user {UserId}", userId);
+        }
     }
 }

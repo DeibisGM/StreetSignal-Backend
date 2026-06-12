@@ -146,6 +146,21 @@ public class ReportsEndpointsTests : IClassFixture<StreetSignalWebAppFactory>
     }
 
     [Fact]
+    public async Task Citizen_can_create_report_and_staff_receives_notification()
+    {
+        var citizenClient = await _factory.AuthedAsync(StreetSignalWebAppFactory.CitizenEmail);
+        var create = await citizenClient.PostAsJsonAsync("/api/reports", ValidReport());
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var staffClient = await _factory.AuthedAsync(StreetSignalWebAppFactory.StaffEmail);
+        var resp = await staffClient.GetAsync("/api/notifications?unreadOnly=true");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await resp.Content.ReadFromJsonAsync<PaginatedNotificationListResponse>();
+        body!.Data.Should().Contain(n => n.Title == "Nuevo reporte");
+    }
+
+    [Fact]
     public async Task Citizen_cannot_update_non_pending_report_returns_409_REPORT_NOT_EDITABLE()
     {
         var citizenClient = await _factory.AuthedAsync(StreetSignalWebAppFactory.CitizenEmail);

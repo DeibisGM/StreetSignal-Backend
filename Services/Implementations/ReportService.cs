@@ -17,19 +17,25 @@ public sealed class ReportService : IReportService
     private readonly IReportUpdateRepository _updates;
     private readonly INotificationRepository _notifications;
     private readonly IUserRepository _users;
+    private readonly IPushNotificationService _push;
+    private readonly ILogger<ReportService> _logger;
 
     public ReportService(
         IReportRepository reports,
         ICategoryRepository categories,
         IReportUpdateRepository updates,
         INotificationRepository notifications,
-        IUserRepository users)
+        IUserRepository users,
+        IPushNotificationService push,
+        ILogger<ReportService> logger)
     {
         _reports = reports;
         _categories = categories;
         _updates = updates;
         _notifications = notifications;
         _users = users;
+        _push = push;
+        _logger = logger;
     }
 
     public async Task<PaginatedReportListResponse> ListForStaffAsync(
@@ -88,9 +94,30 @@ public sealed class ReportService : IReportService
             IsOfficial = false
         }, ct);
 
+        var staffUsers = await _users.ListStaffAsync(ct);
+        const string staffNotifTitle = "Nuevo reporte";
+        var staffNotifBody = $"Se registró un nuevo reporte: {report.Title}.";
+
+        foreach (var staff in staffUsers)
+        {
+            await _notifications.AddAsync(new Notification
+            {
+                UserId = staff.Id,
+                ReportId = report.Id,
+                Title = staffNotifTitle,
+                Message = staffNotifBody
+            }, ct);
+        }
+
         await _reports.SaveChangesAsync(ct);
 
         var saved = await _reports.GetByIdAsync(report.Id, includeUpdates: true, ct)!;
+
+        foreach (var staff in staffUsers)
+        {
+            await TrySendPushAsync(staff.Id, staffNotifTitle, staffNotifBody);
+        }
+
         return new ReportDetailResponse { Data = saved!.ToDetailDto() };
     }
 
@@ -192,19 +219,36 @@ public sealed class ReportService : IReportService
             IsOfficial = true
         }, ct);
 
-        // Notify the citizen
+        const string notifTitle = "Report status updated";
+        var notifBody = $"Your report is now {newStatus}.";
+
         await _notifications.AddAsync(new Notification
         {
             UserId = report.CreatedById,
             ReportId = report.Id,
-            Title = "Report status updated",
-            Message = $"Your report is now {newStatus}."
+            Title = notifTitle,
+            Message = notifBody
         }, ct);
 
         await _reports.SaveChangesAsync(ct);
 
         var saved = await _reports.GetByIdAsync(report.Id, includeUpdates: true, ct)!;
+
+        await TrySendPushAsync(report.CreatedById, notifTitle, notifBody);
+
         return new ReportDetailResponse { Data = saved!.ToDetailDto() };
+    }
+
+    private async Task TrySendPushAsync(Guid userId, string title, string body)
+    {
+        try
+        {
+            await _push.SendAsync(userId, title, body, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Push notification failed for user {UserId}", userId);
+        }
     }
 
     private static string BuildChangeSummary(

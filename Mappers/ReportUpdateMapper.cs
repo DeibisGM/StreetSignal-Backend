@@ -9,7 +9,7 @@ public static class ReportUpdateMapper
     {
         Id = u.Id,
         ReportId = u.ReportId,
-        User = u.CreatedBy!.ToBasicDto(),
+        User = u.CreatedBy?.ToBasicDto() ?? new UserBasicDto { Id = u.CreatedById },
         Type = u.Type,
         Message = u.Message,
         IsOfficial = u.IsOfficial,

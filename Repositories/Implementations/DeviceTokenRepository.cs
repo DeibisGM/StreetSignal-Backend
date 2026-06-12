@@ -14,6 +14,15 @@ public sealed class DeviceTokenRepository : IDeviceTokenRepository
     public Task<DeviceToken?> GetByTokenAsync(string token, CancellationToken ct = default) =>
         _db.DeviceTokens.FirstOrDefaultAsync(d => d.Token == token, ct);
 
+    public async Task<IReadOnlyList<DeviceToken>> GetByUserAsync(Guid userId, CancellationToken ct = default) =>
+        await _db.DeviceTokens.Where(d => d.UserId == userId).ToListAsync(ct);
+
+    public async Task RemoveAsync(string token, CancellationToken ct = default)
+    {
+        var entity = await _db.DeviceTokens.FirstOrDefaultAsync(d => d.Token == token, ct);
+        if (entity is not null) _db.DeviceTokens.Remove(entity);
+    }
+
     public async Task UpsertAsync(Guid userId, string token, Platform? platform, CancellationToken ct = default)
     {
         var existing = await _db.DeviceTokens.FirstOrDefaultAsync(d => d.Token == token, ct);
